@@ -1,142 +1,63 @@
-import { useState } from 'react';
-import { GoogleGenAI } from '@google/genai';
-import {
-  ChatComposer,
-  ChatMessageList,
-  ChatMessage,
-  ChatMessageBubble,
-} from '@astryxdesign/core/Chat';
-import { Layout, LayoutContent, LayoutFooter, LayoutHeader, VStack } from '@astryxdesign/core/Layout';
-import { TextInput } from '@astryxdesign/core/TextInput';
-import { Text } from '@astryxdesign/core/Text';
-
-type Message = {
-  id: string;
-  sender: 'user' | 'assistant';
-  text?: string;
-  imageBytes?: string;
-};
+import { useEffect } from 'react';
+import { VisualEngine } from './engine/VisualEngine';
+import { MinimalHUD } from './components/hud/MinimalHUD';
+import { ConversationOverlay } from './components/conversation/ConversationOverlay';
+import { ExpandedWorkspace } from './components/workspace/ExpandedWorkspace';
+import { useAssistantStore } from './core/state/useAssistantStore';
+import { Sparkles } from 'lucide-react';
 
 export default function App() {
-  const [apiKey, setApiKey] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { isWorkspaceOpen, setWorkspaceOpen } = useAssistantStore();
 
-  const handleSend = async (value: string) => {
-    if (!value.trim()) return;
-
-    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: value };
-    setMessages((prev) => [...prev, userMsg]);
-
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), sender: 'assistant', text: 'Please enter a Gemini API Key first.' },
-      ]);
-      return;
-    }
-
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-
-      if (value.startsWith('/image ')) {
-        const prompt = value.replace('/image ', '').trim();
-        const response = await ai.models.generateImages({
-          model: 'gemini-3.1-flash-lite-image',
-          prompt: prompt,
-          config: {
-            numberOfImages: 1,
-            outputMimeType: 'image/jpeg',
-          },
-        });
-
-        const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
-
-        if (imageBytes) {
-          setMessages((prev) => [
-            ...prev,
-            { id: Date.now().toString(), sender: 'assistant', imageBytes },
-          ]);
-        } else {
-           setMessages((prev) => [
-            ...prev,
-            { id: Date.now().toString(), sender: 'assistant', text: 'Failed to generate image.' },
-          ]);
-        }
-      } else {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: value,
-        });
-
-        if (response.text) {
-          setMessages((prev) => [
-            ...prev,
-            { id: Date.now().toString(), sender: 'assistant', text: response.text },
-          ]);
-        } else {
-           setMessages((prev) => [
-            ...prev,
-            { id: Date.now().toString(), sender: 'assistant', text: 'No text response received.' },
-          ]);
-        }
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Toggle workspace with Cmd+K or Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setWorkspaceOpen(!isWorkspaceOpen);
       }
-    } catch (error: any) {
-      console.error(error);
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), sender: 'assistant', text: `Error: ${error.message}` },
-      ]);
-    }
-  };
+      // Close workspace with Escape
+      if (e.key === 'Escape' && isWorkspaceOpen) {
+        e.preventDefault();
+        setWorkspaceOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isWorkspaceOpen, setWorkspaceOpen]);
 
   return (
-    <Layout
-      height="fill"
-      header={
-        <LayoutHeader>
-          <VStack gap={2} padding={4}>
-            <Text weight="semibold">Personal Assistant</Text>
-            <TextInput
-              label="API Key"
-              placeholder="Enter Gemini API Key..."
-              value={apiKey}
-              onChange={setApiKey}
-              type="password"
-            />
-          </VStack>
-        </LayoutHeader>
-      }
-      content={
-        <LayoutContent padding={4}>
-          <ChatMessageList density="balanced">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} sender={msg.sender}>
-                <ChatMessageBubble>
-                  {msg.imageBytes ? (
-                    <img
-                      src={`data:image/jpeg;base64,${msg.imageBytes}`}
-                      alt="Generated image"
-                      style={{ maxWidth: '100%' }}
-                    />
-                  ) : (
-                    msg.text
-                  )}
-                </ChatMessageBubble>
-              </ChatMessage>
-            ))}
-          </ChatMessageList>
-        </LayoutContent>
-      }
-      footer={
-        <LayoutFooter>
-          <VStack padding={4} width="100%">
-            <ChatComposer
-              placeholder="Message Gemini... (type /image to generate an image)"
-              onSubmit={handleSend}
-            />
-          </VStack>
-        </LayoutFooter>
-      }
-    />
+    <main className="relative w-screen h-screen overflow-hidden bg-[#09080c] text-stone-100 select-none">
+      {/* 1. Master Living Visual Engine (Background Gradient + Pixel Dot-Matrix Face) */}
+      <VisualEngine />
+
+      {/* 2. Minimal Floating Branding / Status Watermark */}
+      <header className="fixed top-6 inset-x-6 z-20 flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-stone-800/80 pointer-events-auto">
+          <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-sm shadow-amber-400" />
+          <span className="text-xs font-medium tracking-wider uppercase text-amber-200/90 font-mono">
+            AETHER • AI
+          </span>
+        </div>
+
+        <button
+          onClick={() => setWorkspaceOpen(true, 'settings')}
+          className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-stone-800/80 hover:border-amber-500/40 text-stone-400 hover:text-amber-200 text-xs font-mono transition-all pointer-events-auto flex items-center gap-1.5"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>Config (⌘K)</span>
+        </button>
+      </header>
+
+      {/* 3. Floating Spatial Conversation Stream */}
+      <ConversationOverlay />
+
+      {/* 4. Minimal HUD Interaction Dock & Expression Tester */}
+      <MinimalHUD />
+
+      {/* 5. Expanded Deep Workspace Modal */}
+      <ExpandedWorkspace />
+    </main>
   );
 }

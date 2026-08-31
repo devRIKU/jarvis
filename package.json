@@ -14,8 +14,17 @@
     "@astryxdesign/theme-neutral": "^0.5.1",
     "@google/genai": "^2.19.0",
     "@stylexjs/stylex": "^0.19.0",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/dompurify": "^3.0.5",
+    "@types/three": "^0.185.4",
+    "canvas-confetti": "^1.9.4",
+    "dompurify": "^3.4.14",
+    "lucide-react": "^1.38.0",
+    "marked": "^18.0.11",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "three": "^0.185.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@astryxdesign/cli": "^0.5.1",
